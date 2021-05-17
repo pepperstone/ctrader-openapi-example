@@ -1,5 +1,4 @@
-# ctrader-openapi-example
-cTrader's OpenAPI app example in Go.
+# cTrader's OpenAPI app example in Go.
 
 # Compile .proto files
 ```shell
