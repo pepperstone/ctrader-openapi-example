@@ -1,13 +1,10 @@
 package main
 
 import (
-	"ctrader/openclient"
-	"ctrader/requests"
-	"ctrader/stubs/model"
 	"fmt"
 	"time"
 
-	"google.golang.org/protobuf/proto"
+	OpenAPI "github.com/ahmad-pepperstone/openapi-go"
 )
 
 var (
@@ -19,63 +16,58 @@ var (
 )
 
 func main() {
-	client := &openclient.Client{
+
+	client := OpenAPI.NewClient(OpenAPI.ClientConfig{
 		ClientID:     ClientID,
 		ClientSecret: ClientSecret,
 		Address:      Host,
 		CertFile:     "server.crt",
 		KeyFile:      "server.key",
-	}
+	})
+
 	err := client.Connect()
 	if err != nil {
 		panic(err)
 	}
 
-	go func() {
-		for {
-			message, err := client.ReadMessage()
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			fmt.Println(message)
-			switch uint32(*message.PayloadType) {
-			case uint32(model.ProtoOAPayloadType_PROTO_OA_TRADER_RES):
-				m := &model.ProtoOATraderRes{}
-				proto.Unmarshal(message.Payload, m)
-				fmt.Println(m)
-				break
-			case uint32(model.ProtoOAPayloadType_PROTO_OA_SYMBOLS_LIST_RES):
-				fmt.Println(message)
-				break
-			default:
-				fmt.Println(message)
-			}
-		}
-	}()
-
-	err = client.SendMessage(requests.ApplicationAuthReq(ClientID, ClientSecret))
+	// Messages are published as []byte
+	client.On("message", OnMessage)
+	client.On("error", OnMessage)
+	client.On("end", OnEnd)
+	// Send few requests to the server
+	fmt.Println("-- Authorize app --")
+	err = client.SendMessage(ApplicationAuthReq(ClientID, ClientSecret))
 	if err != nil {
 		panic(err)
 	}
-	time.Sleep(2 * time.Second)
-
-	err = client.SendMessage(requests.AuthAccountReq(Token, AccountID))
-	if err != nil {
-		panic(err)
-	}
-	time.Sleep(2 * time.Second)
-
-	err = client.SendMessage(requests.TraderDataReq(AccountID))
-	if err != nil {
-		panic(err)
-	}
-
 	time.Sleep(1 * time.Second)
-	err = client.SendMessage(requests.SymbolListReq(AccountID))
+	fmt.Println("\n-- Authorize Account --")
+	err = client.SendMessage(AuthAccountReq(Token, AccountID))
 	if err != nil {
 		panic(err)
 	}
-	// Keep app running
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("\n-- Request Trader Data --")
+	err = client.SendMessage(TraderDataReq(AccountID))
+	if err != nil {
+		panic(err)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	fmt.Println("\n-- Request Symbols List --")
+	err = client.SendMessage(SymbolListReq(AccountID))
+	if err != nil {
+		panic(err)
+	}
+
+	time.Sleep(2 * time.Second)
+	fmt.Println("\n-- Subscribe to EURUSD prices --")
+	err = client.SendMessage(SubscribeToEuerusdReq(AccountID))
+	if err != nil {
+		panic(err)
+	}
+
 	select {}
 }

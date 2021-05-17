@@ -3,6 +3,7 @@ option go_package = "/model";
 
 import "OpenApiModelMessages.proto";
 
+
 /** Request for the authorizing an application to work with the cTrader platform Proxies. */
 message ProtoOAApplicationAuthReq {
     optional ProtoOAPayloadType payloadType = 1 [default = PROTO_OA_APPLICATION_AUTH_REQ];
